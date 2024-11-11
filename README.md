@@ -1,113 +1,96 @@
 # smddmdwriter
-**Social Media Data Download Metadata Writer** is a Python-based utility designed to empower doomsday preppers, future linux users, data enthusiasts, and possibly even Bella Hadid, reclaim their personal media collections & data by reapplying metadata, preserving important information from Mark Zuckerberg's Goon Dungeon. It helps you enrich media files from social media data downloads with relevant metadata. This tool applies metadata ~date, caption, location information, and other EXIF tags directly to media files (images and videos) based on the data contained in JSON files that part of a social media data download package.
 
-## Features:
-- **Automatic Metadata Insertion**: Adds key metadata to media files, including original creation date, caption, and GPS coordinates.
-- **Handles Social Media JSON Data**: Processes the JSON metadata files downloaded from social media platforms and applies relevant EXIF metadata to corresponding local media files.
-- **UTF-8 Encoding Support**: Handles special characters and emojis in captions and ensures they are properly written into the EXIF data.
-- **Skips External Content**: Automatically skips URIs pointing to externally hosted media ~Instagram-hosted videos.
-- **Error Handling and Logging**: Comprehensive logging of actions and warnings ~missing URIs or skipped media files.
+**Social Media Data Download Metadata Writer**  
+A utility that processes social media data exports, applies metadata to media items, and writes it into their EXIF and XMP schemas. This tool enables full compatibility with macOS Finder and Apple Photos by embedding metadata directly into media files, reducing reliance on external metadata storage.
 
-## Prerequisites:
-- **Python 3.x** (download from [python.org](https://www.python.org/downloads/) if not already installed)
-- **ExifTool** (installed via `brew install exiftool` on macOS or other package managers for Linux/Windows)
-- **PyExifTool** (installed via `pip install -r requirements.txt`)
-- **JSON metadata files**: Social media JSON data download must be in the original download format for the tool to work.
+## Prerequisites
+- **Python 3.12** (Recommended). Download from [python.org](https://www.python.org/downloads/).
+- **ExifTool**: ExifTool is installed and accessible from the command line.
+- **JSON Metadata Files**: social media data download export is in its original downloaded format.
 
 ## Installation
-1. **Install Python 3.x** from [python.org](https://www.python.org/downloads/)
-2. **Install ExifTool**:
-   macOS
-   ```bash
-   brew install exiftool
-   ```
-   Linux
-   ```bash
-   you already know how to do it
-   ```
-   Windows: Download and install from [ExifTool](https://exiftool.org/).
+Clone the repository and set up a virtual environment:
 
-3. **Clone the smddmdwriter repository**.
+```bash
+git clone https://github.com/drwavy/smddmdwriter.git
+cd smddmdwriter
+python3 -m venv venv            # Create a virtual environment
+source venv/bin/activate        # Activate the virtual environment (use 'venv\Scripts\activate' on Windows)
+pip install -r requirements.txt # Install dependencies
+```
+
+> **Dependencies**: PyExifTool and Pandas are required, as specified in `requirements.txt`.
+
+## Usage
+1. **Prepare Social Media Download Data**  
+   Organize your social media export files as follows:
+   - `base_folder/your_instagram_activity/content/` – Contains JSON metadata files
+   - `base_folder/media/` – Contains media files (images and videos)
+
+2. **Run the Script**  
+   From a terminal (or command prompt), navigate to the directory containing `smddmdwriter` and start the tool:
+
    ```bash
-   git clone https://github.com/drwavy/smddmdwriter.git
+   python main.py
    ```
+
+3. **Provide the Path to the Base Folder**  
+   When prompted, enter the absolute path to the base folder containing your social media download data:
    
-5. **Install Python dependencies**:
-   Install the required Python packages by running:
-   ```bash
-   pip install -r requirements.txt
+   ```plaintext
+   Please enter the path to the base folder: /absolute/path/to/base_folder/
    ```
-6. **Run** I use JetBrains so I just click the the green play button, if you don't use jetbrains I think you cd into smddmdwritter and write 'python main.py' or smth idk.
 
+4. **Review the Output**  
+   The script will process the media files, embedding metadata where applicable. A log file, `console_output.txt`, will be generated, capturing all actions, warnings, and any files that were skipped.
 
-## Usage:
-1. **Prepare your social media download data**:
-   - Make sure your downloaded media and corresponding metadata (typically JSON files) are organized correctly in the original folder structure:
-     - `base_folder/your_instagram_activity/content/` – For JSON metadata files
-     - `base_folder/media/` – For media files (images and videos)
-   
-2. **Run the Script**:
-   - Open a terminal (or command prompt) and navigate to the folder containing `smddmdwriter`.
-   - Run the following command to start the script:
-     ```bash
-     python smddmdwriter.py
-     ```
+## Logging
+- **console_output.txt**: All actions, errors, skipped files, and metadata updates are recorded in this log file for reference.
 
-3. **Provide the Path to the Base Folder**:
-   - When prompted, provide the absolute path to the base folder containing your social media download data.
-   - Example:
-     ```bash
-     Please enter the path to the base folder: /absolute/path/to/base_folder/
-     ```
+## Metadata Handled
+The following metadata fields are processed and written to media files where applicable:
 
-4. **Review the Output**:
-   - The script will process the media files and apply metadata where appropriate. A log file (`console_output.txt`) will be generated to track the actions taken and any warnings or skipped files.
+- **Date Information**: `creation_timestamp` is mapped to EXIF tags such as:
+  - `DateTimeOriginal`, `CreateDate`, `ModifyDate`, `MediaCreateDate`, `MediaModifyDate`, and `FileModifyDate`
 
-## Logging:
-- All console output, including errors, skipped files, and successful updates, will be logged in a file called `console_output.txt` in the directory where the script is run.
-- Warnings will be issued for media files that cannot be found or external URIs that are skipped.
+- **Caption/Title**: JSON `title` is written to the `Caption-Abstract` EXIF tag, supporting special characters and emojis via UTF-8 encoding.
 
-## Metadata Handled:
-- **Date**: The `creation_timestamp` from the JSON file is used to set the following EXIF tags:
-  - `DateTimeOriginal`
-  - `CreateDate`
-  - `ModifyDate`
-  - `MediaCreateDate`
-  - `MediaModifyDate`
-  - `FileModifyDate`
+- **GPS Coordinates**: If `latitude` and `longitude` are available, they are written to `GPSLatitude` and `GPSLongitude` EXIF tags.
 
-- **Caption/Title**: The `title` from the JSON is written to the `Caption-Abstract` EXIF tag. Special characters and emojis are supported with UTF-8 encoding.
+## Known Limitations
+- **External URIs**: Only local files in the `media` folder are processed; URIs pointing to external content are skipped.
+- **Video Files**: Currently, video files (`.mp4`, `.mov`, etc.) are not processed due to limited EXIF metadata support.
+- **Unsupported JSON Formats**: The tool is designed to process standard social media JSON formats. Significant structural variations in JSON files may cause processing issues.
 
-- **GPS Coordinates**: If available, `latitude` and `longitude` are written to the `GPSLatitude` and `GPSLongitude` EXIF tags.
+## Scripts Overview
+The following scripts are included in this repository to support various types of content:
 
-## Known Limitations:
-- **External URIs**: The script skips URIs that point to externally hosted content (e.g., media hosted on Instagram servers). It only processes local files that are found in the `media` folder.
-- **Video Files**: Video files (`.mp4`, `.mov`, etc.) are skipped as they do not support EXIF metadata.
-- **Unsupported JSON Formats**: The tool processes standard JSON formats found in most social media download packages. If the JSON structure differs significantly, the tool might not process it correctly.
+- **apply_content.py**: Main application script for applying metadata to media files.
+- **json2csv_*.py**: Series of conversion scripts for different content types, converting JSON metadata into CSV format for streamlined processing:
+  - `json2csv_posts.py`, `json2csv_stories.py`, `json2csv_archived_posts.py`, `json2csv_igtv_videos.py`, `json2csv_reels.py`, and `json2csv_profile_photos.py`
 
-## Troubleshooting:
-- **Metadata Not Being Written**: Check that ExifTool is installed correctly and that the media files exist in the specified path. Check the `console_output.txt` for any warnings or errors.
-- **Incorrect Captions**: If special characters in captions aren't showing correctly, check that the media file supports EXIF data and that you are using UTF-8 encoding.
-- **Files Not Found**: Make sure the folder structure is correct and that media files are stored in the `media` folder under the base directory.
+## Roadmap
+- **Supported Content**: Currently processes Instagram content JSON data for:
+  - Posts, Archived Posts, Stories
 
-## Roadmap:
-- **Current Status**: smddmdwriter currently supports only Instagram content JSON data downloads, specifically:
-  - Posts
-  - Archived Posts
-  - Stories
-
-- **Future Features**:
-  - **Video Files**: Support for video files (`.mp4`, `.mov`, etc.)
-  - **Messages**: Support for Instagram messages / inbox
-  - **Wider Platform Support**: a wider range of social media data downloads, including:
+- **Future Enhancements**:
+  - Support for video metadata (`.mp4`, `.mov`, etc.)
+  - Processing Instagram messages (inbox data)
+  - Compatibility with additional platforms, such as:
     - **Instagram HTML Downloads**
     - **Snapchat JSON Data**
-    - **Other Social Media Download Packages**
-  
-- **Rewriting in Perl**: Since ExifTool is written in Perl, the ultimate plan is to rewrite this utility in Perl. This will maximize efficiency and allow smddmdwriter to better interact with ExifTool, engaging in a harmonious marriage of code.
+    - Other social media export formats
 
-## License:
+- **Rewriting in Perl**: To improve performance and better integrate with ExifTool, a future version may be implemented in Perl, ExifTool's native language.
+
+## Troubleshooting
+- **Metadata Not Written**: Verify ExifTool is installed and media files exist in the specified path.
+- **Incorrect Captions**: media files support EXIF data and are encoded in UTF-8.
+- **Files Not Found**: Confirm folder structure accuracy and correct placement of media files in the `media` folder.
+
+## License
 This project is licensed under the MIT License.
 
 ---
-For any issues or questions, please refer to the troubleshooting section or contact the project maintainer.
+
+For questions or issues, please refer to the troubleshooting section or contact the project maintainer.

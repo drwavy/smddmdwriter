@@ -1,175 +1,116 @@
-import json
 import os
-import re
-import subprocess
 import sys
-from datetime import datetime, timezone
+import json
+import shutil
+import subprocess
+import pandas as pd
 
-base_folder = input("Please enter the path to the base folder: ")
+# Reads JSON file from provided file path, returns data
+def read_json(file_path):
+    if not os.path.exists(file_path):
+        print(f"Error: The file '{file_path}' does not exist.")
+        return None
 
-log_file_path = 'console_output.txt'
-log_file = open(log_file_path, 'w')
-sys.stdout = log_file
-sys.stderr = log_file
-
-
-def convert_timestamp_to_exif(creation_timestamp):
-    return datetime.fromtimestamp(creation_timestamp, tz=timezone.utc).strftime('%Y:%m:%d %H:%M:%S')
-
-
-def clean_caption(title):
-    if title:
-        cleaned_title = title.replace('\n', ' ').strip()
+    with open(file_path, 'r') as file:
         try:
-            cleaned_title = cleaned_title.encode('utf-8', 'replace').decode('utf-8')
-        except UnicodeEncodeError as e:
-            print(f"Error encoding title '{title}': {e}")
-            cleaned_title = re.sub(r'[^\x00-\x7F]+', '?', cleaned_title)
-        return cleaned_title
-    return ''
+            data = json.load(file)
+            return data
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON: {e}")
+            return None
 
+# Processes given data (expects dictionary)
+def process_data(data):
+    if not isinstance(data, dict):
+        print("Error: Provided data is not a dictionary.")
+        return
 
-def apply_metadata_to_file(metadata, file_path):
-    command = ['exiftool', '-charset', 'utf8', '-E']
+    # Example processing: print each key-value pair
+    for key, value in data.items():
+        print(f"{key}: {value}")
 
-    if 'DateTimeOriginal' in metadata:
-        datetime_value = metadata['DateTimeOriginal']
-        command += [f'-DateTimeOriginal={datetime_value}', f'-MediaCreateDate={datetime_value}',
-                    f'-MediaModifyDate={datetime_value}', f'-CreateDate={datetime_value}',
-                    f'-ModifyDate={datetime_value}',
-                    f'-FileModifyDate={datetime_value}']
-    if 'Caption-Abstract' in metadata and metadata['Caption-Abstract']:
-        command += [f'-Caption-Abstract={metadata["Caption-Abstract"]}']
-    if 'GPSLatitude' in metadata and 'GPSLongitude' in metadata:
-        command += [f'-GPSLatitude={metadata["GPSLatitude"]}', f'-GPSLongitude={metadata["GPSLongitude"]}']
+# Main function to copy JSON files, convert them to CSV, update CSV paths.
+def main():
+    # Ask user for target directory path
+    target_directory = input("Enter the target directory path: ")
 
-    command += ['-overwrite_original', file_path]
-    print(f"Running command: {' '.join(command)}")
+    # Define the source and destination paths
+    source_path = os.path.join(target_directory, 'your_instagram_activity', 'content')
+    destination_path = os.path.join(os.getcwd(), 'json')
 
-    subprocess.run(command)
+    # List of JSON files to be copied
+    json_files = [
+        'archived_posts.json', 'igtv_videos.json', 'other_content.json',
+        'posts_1.json', 'profile_photos.json', 'reels.json', 'stories.json'
+    ]
 
+    # Check if the source directory exists
+    if not os.path.exists(source_path):
+        print(f"Source directory not found: {source_path}")
+        return
 
-def map_json_to_media_dir(json_file):
-    if 'archived' in json_file:
-        return 'archived_posts'
-    elif 'posts' in json_file:
-        return 'posts'
-    elif 'stories' in json_file:
-        return 'stories'
-    elif 'other' in json_file:
-        return 'other'
-    return None
+    # Create the destination directory if it doesn't exist
+    if not os.path.exists(destination_path):
+        os.makedirs(destination_path)
 
+    # Copy the JSON files
+    for file_name in json_files:
+        source_file = os.path.join(source_path, file_name)
+        destination_file = os.path.join(destination_path, file_name)
 
-def find_media_file(media_base_folder, media_uri):
-    exact_path = os.path.join(media_base_folder, media_uri.lstrip('/'))
-    if os.path.isfile(exact_path):
-        return exact_path
+        if os.path.exists(source_file):
+            shutil.copy2(source_file, destination_file)
+            print(f"Copied {file_name} to {destination_path}")
+        else:
+            print(f"File not found: {file_name}")
 
-    for root, dirs, files in os.walk(media_base_folder):
-        for file in files:
-            if file in media_uri:
-                return os.path.join(root, file)
+    # Run json2csv_posts_1.py
+    json_scripts = [
+        'json2csv_profile_photos.py',
+        'json2csv_igtv_videos.py',
+        'json2csv_reels.py',
+        'json2csv_other_content.py',
+        'json2csv_stories.py',
+        'json2csv_posts_1.py'
+    ]
 
-    return None
+    for script in json_scripts:
+        try:
+            subprocess.run(['python', script], check=True)
+            print(f"{script} executed successfully.")
+        except subprocess.CalledProcessError as e:
+            print(f"Error running {script}: {e}")
+            return
 
-
-def process_json_file(json_data, media_base_folder, base_folder):
-    if isinstance(json_data, dict):
-        for key, media_items in json_data.items():
-            if isinstance(media_items, list):
-                for item in media_items:
-                    if isinstance(item, dict):
-                        media_uri = item.get('uri', None)
-                        if not media_uri:
-                            continue
-
-                        if media_uri.startswith('http://') or media_uri.startswith('https://'):
-                            print(f"Skipping external URI: {media_uri}")
-                            continue
-
-                        media_file_path = find_media_file(media_base_folder, media_uri)
-
-                        if not media_file_path:
-                            print(f"Warning: File not found for URI: {media_uri}")
-                            continue
-
-                        file_metadata = {}
-                        file_metadata['SourceFile'] = media_file_path
-
-                        if media_file_path.endswith(('.mp4', '.mov')):
-                            continue
-                        else:
-                            file_metadata['DateTimeOriginal'] = convert_timestamp_to_exif(item['creation_timestamp'])
-                            file_metadata['Caption-Abstract'] = clean_caption(item['title'])
-
-                            photo_metadata = item['media_metadata'].get('photo_metadata', {})
-                            exif_data_list = photo_metadata.get('exif_data', [])
-                            if exif_data_list:
-                                exif_data = exif_data_list[0]
-                                if 'latitude' in exif_data:
-                                    file_metadata['GPSLatitude'] = exif_data['latitude']
-                                if 'longitude' in exif_data:
-                                    file_metadata['GPSLongitude'] = exif_data['longitude']
-
-                            apply_metadata_to_file(file_metadata, file_metadata['SourceFile'])
-    elif isinstance(json_data, list):
-        for item in json_data:
-            if isinstance(item, dict):
-                media_uri = item.get('uri', None)
-                if not media_uri:
-                    continue
-
-                if media_uri.startswith('http://') or media_uri.startswith('https://'):
-                    print(f"Skipping external URI: {media_uri}")
-                    continue
-
-                media_file_path = find_media_file(media_base_folder, media_uri)
-
-                if not media_file_path:
-                    print(f"Warning: File not found for URI: {media_uri}")
-                    continue
-
-                file_metadata = {}
-                file_metadata['SourceFile'] = media_file_path
-
-                if media_file_path.endswith(('.mp4', '.mov')):
-                    continue
+    # Update media_uri or uri column in all CSV files in the csv folder
+    csv_folder_path = os.path.join(os.getcwd(), 'csv')
+    if os.path.exists(csv_folder_path):
+        for csv_file in os.listdir(csv_folder_path):
+            if csv_file.endswith('.csv'):
+                csv_path = os.path.join(csv_folder_path, csv_file)
+                df = pd.read_csv(csv_path)
+                if 'media_uri' in df.columns:
+                    df['media_uri'] = df['media_uri'].apply(lambda x: os.path.join(target_directory, str(x)) if pd.notna(x) else x)
+                    df.to_csv(csv_path, index=False)
+                    print(f"Updated media_uri paths in {csv_file}.")
+                elif 'uri' in df.columns:
+                    df['uri'] = df['uri'].apply(lambda x: os.path.join(target_directory, str(x)) if pd.notna(x) else x)
+                    df.to_csv(csv_path, index=False)
+                    print(f"Updated uri paths in {csv_file}.")
                 else:
-                    file_metadata['DateTimeOriginal'] = convert_timestamp_to_exif(item['creation_timestamp'])
-                    file_metadata['Caption-Abstract'] = clean_caption(item['title'])
-
-                    photo_metadata = item['media_metadata'].get('photo_metadata', {})
-                    exif_data_list = photo_metadata.get('exif_data', [])
-                    if exif_data_list:
-                        exif_data = exif_data_list[0]
-                        if 'latitude' in exif_data:
-                            file_metadata['GPSLatitude'] = exif_data['latitude']
-                        if 'longitude' in exif_data:
-                            file_metadata['GPSLongitude'] = exif_data['longitude']
-
-                    apply_metadata_to_file(file_metadata, file_metadata['SourceFile'])
+                    print(f"No media_uri or uri column found in {csv_file}.")
     else:
-        print(f"Unsupported JSON format: {type(json_data)}")
+        print(f"CSV folder not found at {csv_folder_path}")
 
+    # Run apply_content.py on all CSV files in the csv folder
+    if os.path.exists(csv_folder_path):
+        for csv_file in os.listdir(csv_folder_path):
+            if csv_file.endswith('.csv'):
+                try:
+                    subprocess.run(['python', 'apply_content.py', csv_file], check=True)
+                    print(f"apply_content.py executed successfully on {csv_file}.")
+                except subprocess.CalledProcessError as e:
+                    print(f"Error running apply_content.py on {csv_file}: {e}")
 
-def process_all_json(base_folder):
-    content_folder = os.path.join(base_folder, 'your_instagram_activity', 'content')
-    media_base_folder = os.path.join(base_folder, 'media')
-
-    for json_file in os.listdir(content_folder):
-        if json_file.endswith('.json'):
-            json_path = os.path.join(content_folder, json_file)
-            media_dir = map_json_to_media_dir(json_file)
-
-            if media_dir:
-                print(f"Processing JSON file: {json_file} for media folder: {media_dir}")
-                with open(json_path, 'r') as f:
-                    json_data = json.load(f)
-
-                media_folder = os.path.join(media_base_folder, media_dir)
-                process_json_file(json_data, media_folder, base_folder)
-
-
-process_all_json(base_folder)
-log_file.close()
+if __name__ == "__main__":
+    main()
