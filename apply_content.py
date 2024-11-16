@@ -72,3 +72,4 @@ for csv_file in csv_files:
     data = pd.read_csv(file_path)
     for _, row in data.iterrows():
         apply_metadata(row, csv_file)
+

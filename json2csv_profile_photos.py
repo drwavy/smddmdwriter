@@ -85,3 +85,4 @@ json_file_path = 'json/profile_photos.json'
 
 # Process the profile photos JSON
 process_profile_photos(json_file_path)
+

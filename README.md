@@ -1,4 +1,7 @@
-# smddmdwriter
+# smddmdwriter ![Version](https://img.shields.io/badge/version-4.2.0--beta-orange.svg)
+
+
+
 
 **smddmdwriter (Social Media Data Download Metadata Writer)** is a Python
 utility that processes social media JSON exports, converting them into CSVs
@@ -58,7 +61,7 @@ This project makes use of:
 - [PyExifTool](https://pypi.org/project/pyexiftool/) for Python-based
   ExifTool integration.
 
-## License
+## License ![License](https://img.shields.io/badge/license-AGPL%20v3-red.svg)
 
 This project is licensed under the **GNU Affero General Public License v3.0
 (AGPL-3.0)**.
