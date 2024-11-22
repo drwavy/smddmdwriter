@@ -109,7 +109,8 @@ def main():
         'json2csv_reels.py',
         'json2csv_other_content.py',
         'json2csv_stories.py',
-        'json2csv_posts_1.py'
+        'json2csv_posts_1.py',
+        'json2csv_archived_posts.py'
     ]
 
     for script in json_scripts:
