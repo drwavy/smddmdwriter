@@ -4,11 +4,9 @@ from datetime import datetime
 
 
 def process_stories(json_file, output_csv='csv/stories.csv'):
-    # Load JSON data
     with open(json_file, 'r') as f:
         data = json.load(f).get('ig_stories', [])
 
-    # Define CSV output fields
     fieldnames = [
         'uri', 'creation_timestamp', 'device_id', 'camera_position', 'source_type',
         'title', 'source_app', 'scene_capture_type', 'date_time_original',
@@ -16,12 +14,10 @@ def process_stories(json_file, output_csv='csv/stories.csv'):
         'shutter_speed', 'metering_mode', 'scene_type', 'music_genre'
     ]
 
-    # Open CSV output file
     with open(output_csv, 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
-        # Process each story entry
         for story in data:
             uri = story.get('uri', '')
             creation_timestamp = story.get('creation_timestamp', '')
@@ -31,7 +27,6 @@ def process_stories(json_file, output_csv='csv/stories.csv'):
             device_id = camera_position = source_type = scene_capture_type = date_time_original = software = ''
             iso = focal_length = lens_model = lens_make = aperture = shutter_speed = metering_mode = scene_type = music_genre = ''
 
-            # Extract metadata
             media_metadata = story.get('media_metadata', {})
             exif_data = media_metadata.get('photo_metadata', {}).get('exif_data', []) or media_metadata.get(
                 'video_metadata', {}).get('exif_data', [])
@@ -73,7 +68,6 @@ def process_stories(json_file, output_csv='csv/stories.csv'):
             post_title = title.encode('latin1').decode('utf-8') if title else ''  # Encoding adjustment
             source_app = story.get('cross_post_source', {}).get('source_app', '')
 
-            # Write extracted data to CSV
             writer.writerow({
                 'uri': uri,
                 'creation_timestamp': formatted_timestamp,
@@ -97,9 +91,7 @@ def process_stories(json_file, output_csv='csv/stories.csv'):
             })
 
 
-# Path to the stories JSON file
 json_file_path = 'json/stories.json'
 
-# Process the stories JSON
 process_stories(json_file_path)
 

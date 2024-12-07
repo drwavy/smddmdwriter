@@ -6,9 +6,8 @@ import subprocess
 import pandas as pd
 import csv
 from datetime import datetime
+import msgjson
 
-
-# Reads JSON file from provided file path, returns data
 def read_json(file_path):
     if not os.path.exists(file_path):
         print(f"Error: The file '{file_path}' does not exist.")
@@ -23,39 +22,6 @@ def read_json(file_path):
             return None
 
 
-# Processes given data (expects dictionary)
-def process_data(data):
-    if not isinstance(data, dict):
-        print("Error: Provided data is not a dictionary.")
-        return
-
-    # Example processing: print each key-value pair
-    for key, value in data.items():
-        print(f"{key}: {value}")
-
-
-# Function to convert JSON to CSV
-def json_to_csv(json_filepath, csv_filepath, fieldnames):
-    try:
-        # Read JSON data from file
-        with open(json_filepath, 'r') as json_file:
-            data = json.load(json_file)
-
-        # Write CSV data to file
-        with open(csv_filepath, 'w', newline='', encoding='utf-8') as csv_file:
-            csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            csv_writer.writeheader()
-
-            # Loop through JSON data and write each row to CSV
-            for item in data:
-                csv_writer.writerow({field: item.get(field, '') for field in fieldnames})
-
-        print(f"Converted {json_filepath} to {csv_filepath}")
-    except Exception as e:
-        print(f"Error converting JSON to CSV: {e}")
-
-
-# Function to create CSV folder if it doesn't exist
 def create_csv_folder():
     csv_folder_path = os.path.join(os.getcwd(), 'csv')
     if not os.path.exists(csv_folder_path):
@@ -64,31 +30,24 @@ def create_csv_folder():
     return csv_folder_path
 
 
-# Main function to copy JSON files, convert them to CSV, update CSV paths.
 def main():
-    # Ask user for target directory path
     target_directory = input("Enter the target directory path: ")
 
-    # Define the source and destination paths
     source_path = os.path.join(target_directory, 'your_instagram_activity', 'content')
     destination_path = os.path.join(os.getcwd(), 'json')
 
-    # List of JSON files to be copied
     json_files = [
         'archived_posts.json', 'igtv_videos.json', 'other_content.json',
         'posts_1.json', 'profile_photos.json', 'reels.json', 'stories.json'
     ]
 
-    # Check if the source directory exists
     if not os.path.exists(source_path):
         print(f"Source directory not found: {source_path}")
         return
 
-    # Create the destination directory if it doesn't exist
     if not os.path.exists(destination_path):
         os.makedirs(destination_path)
 
-    # Copy the JSON files
     for file_name in json_files:
         source_file = os.path.join(source_path, file_name)
         destination_file = os.path.join(destination_path, file_name)
@@ -99,10 +58,15 @@ def main():
         else:
             print(f"File not found: {file_name}")
 
-    # Create CSV folder
     csv_folder_path = create_csv_folder()
 
-    # Run json2csv_posts_1.py
+    try:
+        print("Processing messages using msgjson.py...")
+        msgjson.process_messages(target_directory, output_file=os.path.join(csv_folder_path, 'messages.csv'))
+        print("Messages processed successfully.")
+    except Exception as e:
+        print(f"An error occurred while processing messages: {e}")
+
     json_scripts = [
         'json2csv_profile_photos.py',
         'json2csv_igtv_videos.py',
@@ -110,7 +74,7 @@ def main():
         'json2csv_other_content.py',
         'json2csv_stories.py',
         'json2csv_posts_1.py',
-        'json2csv_archived_posts.py'
+        'json2csv_archived_posts.py',
     ]
 
     for script in json_scripts:
@@ -121,7 +85,6 @@ def main():
             print(f"Error running {script}: {e}")
             return
 
-    # Update media_uri or uri column in all CSV files in the csv folder
     if os.path.exists(csv_folder_path):
         for csv_file in os.listdir(csv_folder_path):
             if csv_file.endswith('.csv'):
@@ -141,17 +104,18 @@ def main():
     else:
         print(f"CSV folder not found at {csv_folder_path}")
 
-    # Run apply_content.py on all CSV files in the csv folder
     if os.path.exists(csv_folder_path):
         for csv_file in os.listdir(csv_folder_path):
             if csv_file.endswith('.csv'):
                 try:
                     subprocess.run(['python', 'apply_content.py', csv_file], check=True)
                     print(f"apply_content.py executed successfully on {csv_file}.")
-                except subprocess.CalledProcessError as e:
-                    print(f"Error running apply_content.py on {csv_file}: {e}")
 
+                    if csv_file == 'messages_media.csv':
+                        subprocess.run(['python', 'msgjson_apply.py', csv_file], check=True)
+                        print(f"msgjson_apply.py executed successfully on {csv_file}.")
+                except subprocess.CalledProcessError as e:
+                    print(f"Error running scripts on {csv_file}: {e}")
 
 if __name__ == "__main__":
     main()
-
