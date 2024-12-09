@@ -1,8 +1,5 @@
 # smddmdwriter ![Version](https://img.shields.io/badge/version-4.2.0--beta-orange.svg)
 
-
-
-
 **smddmdwriter (Social Media Data Download Metadata Writer)** is a Python
 utility that processes social media JSON exports, converting them into CSVs
 for posts, stories, reels, IGTV videos, profile photos, and archived posts,
@@ -17,7 +14,7 @@ valuable context such as timestamps, locations, and descriptions.
 - **Pandas**: Version 2.2.3 or higher
 - **PyExifTool**: Version 0.5.6 or higher
 
-## Installation, Usage
+## Installation
 1. Verify your Python version. _Must have Python 3.12 or higher_.
     ```bash
     python --version
@@ -35,10 +32,14 @@ valuable context such as timestamps, locations, and descriptions.
     pip install -r requirements.txt
     ```
 5. If zipped, **Unzip** your Instagram Data Download.
-6. Run `main.py` and provide the folder path when prompted.
-    ```bash
-    python main.py
-    ```
+
+Instagram HTML
+1. cd ightml
+2. ightml.py - parse posts, archived posts, stories
+3. ightmlw.py - apply metadata
+4. ightmlmsg.py - parse inbox
+5. ightmlmsg2.py - apply timestamp metadata
+6. ightmlmsg3.py - apply caption metadata
 
 ## Configuration
 - Paths to JSON files and media directories can be configured via script

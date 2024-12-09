@@ -1,88 +1,78 @@
 import csv
 import subprocess
 import os
-import locale
-
-# Metadata mapping dictionary with Apple Photos XMP tags
-metadata_mapping = {
-    "FilePath": {"ExifTool": "FileName"},
-    "Caption-Abstract": {"ExifTool": ["Caption-Abstract", "XMP-dc:Description"]},
-    "AllDates": {"ExifTool": ["DateTimeOriginal", "ModifyDate", "CreateDate"]},
-    "ApertureValue": {"ExifTool": "ApertureValue"},
-    "CameraElevationAngle": {"ExifTool": "XMP:CameraPosition"},
-    "DateTime": {"ExifTool": "ModifyDate"},
-    "DateTimeOriginal": {"ExifTool": ["DateTimeOriginal", "XMP-photoshop:DateCreated"]},
-    "DeviceSettingDescription": {"ExifTool": "XMP:DeviceID"},
-    "FocalLength": {"ExifTool": "FocalLength"},
-    "ISO": {"ExifTool": "ISO"},
-    "GPSLatitude": {"ExifTool": "GPSLatitude"},
-    "LensMake": {"ExifTool": "LensMake"},
-    "LensModel": {"ExifTool": ["LensModel", "XMP-exif:LensModel"]},
-    "GPSLongitude": {"ExifTool": "GPSLongitude"},
-    "MeteringMode": {"ExifTool": "MeteringMode"},
-    "Genre": {"ExifTool": "Keywords"},
-    "SceneCaptureType": {"ExifTool": "SceneCaptureType"},
-    "ShutterSpeedValue": {"ExifTool": "ShutterSpeedValue"},
-    "Software": {"ExifTool": ["Software", "XMP-tiff:Software"]},
-    "FileSource": {"ExifTool": "FileSource"},
-    "Title": {"ExifTool": "XMP-dc:Title"},
-    "Keywords": {"ExifTool": ["Keywords", "XMP-dc:Subject"]},
-    "Location": {"ExifTool": ["GPSLatitude", "GPSLongitude"]},
-    "PersonTags": {"ExifTool": "XMP-mwg-rs:RegionName"},
-    "CameraMake": {"ExifTool": "XMP-tiff:Make"},
-    "CameraModel": {"ExifTool": "XMP-tiff:Model"},
-    "Orientation": {"ExifTool": "XMP-tiff:Orientation"}
-}
-
-# Path to the input CSV file
-csv_file_path = 'ightml.csv'
-
-# Set locale to UTF-8
-locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
 
-# Function to build the ExifTool command
-def build_exiftool_command(row):
-    commands = ["-charset", "utf8", "-overwrite_original"]  # Add UTF-8 charset and overwrite flag
-    file_path = row.get("FilePath")
-    if not file_path or not os.path.exists(file_path):
-        print(f"Skipping invalid file path: {file_path}")
-        return None
-
-    for column, value in row.items():
-        if column in metadata_mapping and value:
-            exif_tags = metadata_mapping[column].get("ExifTool")
-            if not exif_tags:
-                continue
-            if isinstance(exif_tags, list):
-                for tag in exif_tags:
-                    commands.append(f"-{tag}={value}")
-            else:
-                commands.append(f"-{exif_tags}={value}")
-
-    # Combine commands and add file path
-    if commands:
-        return ["exiftool"] + commands + [file_path]
-    return None
+# Helper to write metadata using ExifTool
+def write_metadata(file_path, metadata):
+    for tag, value in metadata.items():
+        cmd = ["exiftool", f"-{tag}={value}", file_path]
+        try:
+            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            print(f"Successfully updated {tag} for {file_path}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error writing {tag} to {file_path}: {e}")
 
 
-# Process the CSV and apply metadata
-def apply_metadata(csv_file_path):
-    with open(csv_file_path, mode='r', encoding='utf-8') as csv_file:
-        reader = csv.DictReader(csv_file)
+# Main function to process the CSV
+def process_csv(csv_path, base_dir):
+    with open(csv_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
         for row in reader:
-            command = build_exiftool_command(row)
-            if command:
-                try:
-                    result = subprocess.run(command, capture_output=True, text=True)
-                    if result.returncode == 0:
-                        print(f"Metadata applied successfully to {row.get('FilePath')}")
-                    else:
-                        print(f"Error applying metadata to {row.get('FilePath')}: {result.stderr}")
-                except Exception as e:
-                    print(f"Failed to execute command for {row.get('FilePath')}: {e}")
+            relative_path = row.get('FilePath')
+            if not relative_path:
+                continue  # Skip rows with no file path
+
+            # Prepend base_dir to resolve the full file path
+            media_path = os.path.join(base_dir, relative_path)
+
+            # Validate that the file exists
+            if not os.path.isfile(media_path):
+                print(f"File not found: {media_path}")
+                continue
+
+            # Metadata to write
+            metadata = {}
+
+            # Map CSV columns to metadata tags
+            metadata_mapping = {
+                "Caption-Abstract": ["IPTC:Caption-Abstract", "XMP:Description"],
+                "AllDates": ["DateTimeOriginal", "CreateDate", "ModifyDate",
+                             "MediaCreateDate", "MediaModifyDate"],
+                "ApertureValue": ["ApertureValue"],
+                "CameraElevationAngle": ["CameraElevationAngle"],
+                "DateTime": ["DateTime"],
+                "DateTimeOriginal": ["DateTimeOriginal"],
+                "DeviceSettingDescription": ["DeviceSettingDescription"],
+                "FocalLength": ["FocalLength"],
+                "ISO": ["ISO"],
+                "GPSLatitude": ["GPSLatitude"],
+                "LensMake": ["LensMake"],
+                "LensModel": ["LensModel"],
+                "GPSLongitude": ["GPSLongitude"],
+                "MeteringMode": ["MeteringMode"],
+                "Genre": ["IPTC:By-line", "IPTC:Credit", "XMP:Creator"],
+                "SceneCaptureType": ["SceneCaptureType"],
+                "Scene type": ["SceneType"],  # Adjust tag based on intent
+                "ShutterSpeedValue": ["ShutterSpeedValue"],
+                "Software": ["Software"],
+                "FileSource": ["FileSource"]
+            }
+
+            # Populate metadata dictionary from the CSV
+            for csv_column, tags in metadata_mapping.items():
+                value = row.get(csv_column, '').strip()
+                if value:
+                    for tag in tags:
+                        metadata[tag] = value
+
+            # Write all metadata
+            if metadata:
+                write_metadata(media_path, metadata)
 
 
 # Run the script
 if __name__ == "__main__":
-    apply_metadata(csv_file_path)
+    csv_file_path = "ightml.csv"
+    base_dir = input("Enter the base directory for the media files: ").strip()
+    process_csv(csv_file_path, base_dir)
