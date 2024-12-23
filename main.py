@@ -1,121 +1,88 @@
-import os
-import sys
-import json
-import shutil
+from pathlib import Path
+import logging
 import subprocess
-import pandas as pd
-import csv
-from datetime import datetime
-import msgjson
-
-def read_json(file_path):
-    if not os.path.exists(file_path):
-        print(f"Error: The file '{file_path}' does not exist.")
-        return None
-
-    with open(file_path, 'r') as file:
-        try:
-            data = json.load(file)
-            return data
-        except json.JSONDecodeError as e:
-            print(f"Error decoding JSON: {e}")
-            return None
+from typing import Optional
 
 
-def create_csv_folder():
-    csv_folder_path = os.path.join(os.getcwd(), 'csv')
-    if not os.path.exists(csv_folder_path):
-        os.makedirs(csv_folder_path)
-        print(f"Created CSV folder at {csv_folder_path}")
-    return csv_folder_path
+def setup_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+
+def get_valid_base_directory() -> Path:
+    while True:
+        base_directory = input("Enter the base directory: ").strip()
+        base_path = Path(base_directory)
+        if base_path.is_dir():
+            with open("base_directory.txt", "w", encoding="utf-8") as file:
+                file.write(str(base_path))
+            logging.info(f"Base directory saved to base_directory.txt: {base_path}")
+            return base_path
+        else:
+            print(f"'{base_directory}' is not a valid directory. Please try again.")
+
+
+def identify_directory_type(base_directory: Path) -> Optional[str]:
+    if "instagram" in base_directory.name.lower().strip():
+        if (base_directory / "index.html").exists():
+            return "Instagram HTML"
+        else:
+            return "Instagram JSON"
+    elif any(
+            file.suffix == ".xz" and len(file.suffixes) > 1 and file.suffixes[-2] == ".json"
+            for file in base_directory.glob("*.*")
+    ):
+        return "Compressed JSON"
+    return None
+
+
+def execute_script(script_path: Path, base_directory: Path):
+    try:
+        logging.info(f"Executing {script_path}...")
+        result = subprocess.run(
+            ["python", str(script_path), str(base_directory)],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        logging.info(f"Script output:\n{result.stdout}")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Error occurred while executing {script_path}:\n{e.stderr}")
+
+
+def csv_folder_exists():
+    csv_folder = Path(__file__).parent / "csv"
+    if not csv_folder.exists():
+        csv_folder.mkdir()
+        logging.info(f"'csv' folder created at: {csv_folder}")
+    else:
+        logging.info(f"'csv' folder already exists at: {csv_folder}")
 
 
 def main():
-    target_directory = input("Enter the target directory path: ")
-
-    source_path = os.path.join(target_directory, 'your_instagram_activity', 'content')
-    destination_path = os.path.join(os.getcwd(), 'json')
-
-    json_files = [
-        'archived_posts.json', 'igtv_videos.json', 'other_content.json',
-        'posts_1.json', 'profile_photos.json', 'reels.json', 'stories.json'
-    ]
-
-    if not os.path.exists(source_path):
-        print(f"Source directory not found: {source_path}")
+    setup_logging()
+    csv_folder_exists()
+    base_directory = get_valid_base_directory()
+    logging.info(f"Using base directory: {base_directory}")
+    directory_type = identify_directory_type(base_directory)
+    if not directory_type:
+        logging.error("Unable to identify the directory type.")
         return
-
-    if not os.path.exists(destination_path):
-        os.makedirs(destination_path)
-
-    for file_name in json_files:
-        source_file = os.path.join(source_path, file_name)
-        destination_file = os.path.join(destination_path, file_name)
-
-        if os.path.exists(source_file):
-            shutil.copy2(source_file, destination_file)
-            print(f"Copied {file_name} to {destination_path}")
+    logging.info(f"Detected directory type: {directory_type}")
+    if directory_type == "Instagram JSON":
+        confirm = input("Is this an Instagram JSON directory? (Y/N): ").strip().lower()
+        if confirm == "y":
+            logging.info("Confirmed directory type: Instagram JSON")
+            content_script_path = Path(__file__).parent / "instagram_json_content.py"
+            inbox_script_path = Path(__file__).parent / "instagram_json_inbox.py"
+            execute_script(content_script_path, base_directory)
+            execute_script(inbox_script_path, base_directory)
         else:
-            print(f"File not found: {file_name}")
-
-    csv_folder_path = create_csv_folder()
-
-    try:
-        print("Processing messages using msgjson.py...")
-        msgjson.process_messages(target_directory, output_file=os.path.join(csv_folder_path, 'messages.csv'))
-        print("Messages processed successfully.")
-    except Exception as e:
-        print(f"An error occurred while processing messages: {e}")
-
-    json_scripts = [
-        'json2csv_profile_photos.py',
-        'json2csv_igtv_videos.py',
-        'json2csv_reels.py',
-        'json2csv_other_content.py',
-        'json2csv_stories.py',
-        'json2csv_posts_1.py',
-        'json2csv_archived_posts.py',
-    ]
-
-    for script in json_scripts:
-        try:
-            subprocess.run(['python', script], check=True)
-            print(f"{script} executed successfully.")
-        except subprocess.CalledProcessError as e:
-            print(f"Error running {script}: {e}")
-            return
-
-    if os.path.exists(csv_folder_path):
-        for csv_file in os.listdir(csv_folder_path):
-            if csv_file.endswith('.csv'):
-                csv_path = os.path.join(csv_folder_path, csv_file)
-                df = pd.read_csv(csv_path)
-                if 'media_uri' in df.columns:
-                    df['media_uri'] = df['media_uri'].apply(
-                        lambda x: os.path.join(target_directory, str(x)) if pd.notna(x) else x)
-                    df.to_csv(csv_path, index=False)
-                    print(f"Updated media_uri paths in {csv_file}.")
-                elif 'uri' in df.columns:
-                    df['uri'] = df['uri'].apply(lambda x: os.path.join(target_directory, str(x)) if pd.notna(x) else x)
-                    df.to_csv(csv_path, index=False)
-                    print(f"Updated uri paths in {csv_file}.")
-                else:
-                    print(f"No media_uri or uri column found in {csv_file}.")
+            logging.warning("Directory type confirmation declined.")
     else:
-        print(f"CSV folder not found at {csv_folder_path}")
+        logging.warning(f"No script configured for directory type: {directory_type}")
 
-    if os.path.exists(csv_folder_path):
-        for csv_file in os.listdir(csv_folder_path):
-            if csv_file.endswith('.csv'):
-                try:
-                    subprocess.run(['python', 'apply_content.py', csv_file], check=True)
-                    print(f"apply_content.py executed successfully on {csv_file}.")
-
-                    if csv_file == 'messages_media.csv':
-                        subprocess.run(['python', 'msgjson_apply.py', csv_file], check=True)
-                        print(f"msgjson_apply.py executed successfully on {csv_file}.")
-                except subprocess.CalledProcessError as e:
-                    print(f"Error running scripts on {csv_file}: {e}")
 
 if __name__ == "__main__":
     main()

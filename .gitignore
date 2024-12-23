@@ -1,5 +1,10 @@
 csv
-json
 .venv
 .idea
+base_directory.txt
+missing_files_content.log
+missing_files_inbox.log
+content.csv
+inbox.csv
+
 

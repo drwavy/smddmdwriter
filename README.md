@@ -1,3 +1,9 @@
+### Current Update
+All JSON parsing has been reduced from 14 files to just 2! Mashallah. 
+Functions are now more modular, code is cleaner, God is Good.
+One minor issue is the AAC files are being uncooperative.
+I'm considering just converting them to mp4 as a part of the process.
+
 # smddmdwriter ![Version](https://img.shields.io/badge/version-4.2.0--beta-orange.svg)
 
 **smddmdwriter (Social Media Data Download Metadata Writer)** is a Python
