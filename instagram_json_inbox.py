@@ -14,7 +14,8 @@ all_records = []
 
 for root, _, files in os.walk(inbox_directory):
     for file in files:
-        if file == 'message_1.json':
+        # if file == 'message_1.json':  # if there's only message_1.json, works for most but doesn't account for edge
+        if file.startswith('message_') and file.endswith('.json'):
             json_file_path = os.path.join(root, file)
             with open(json_file_path, 'r', encoding='utf-8') as json_file:
                 data = json.load(json_file)

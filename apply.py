@@ -71,21 +71,18 @@ if __name__ == "__main__":
     inbox_csv_file = "csv/inbox.csv"
     base_directory_file = "base_directory.txt"
 
-    # Read the base directory
     if not os.path.exists(base_directory_file):
         print(f"Error: Base directory file '{base_directory_file}' not found.")
     else:
         with open(base_directory_file, 'r') as base_file:
             base_directory = base_file.read().strip()
 
-        # Process content.csv
         if os.path.exists(content_csv_file):
             print("Processing content.csv...")
             update_metadata_from_csv(content_csv_file, base_directory, mode='content')
         else:
             print(f"Error: Content CSV file '{content_csv_file}' not found.")
 
-        # Process inbox.csv
         if os.path.exists(inbox_csv_file):
             print("Processing inbox.csv...")
             update_metadata_from_csv(inbox_csv_file, base_directory, mode='inbox')
