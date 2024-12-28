@@ -4,16 +4,25 @@ import subprocess
 from datetime import datetime
 
 
-def unix_to_datetime(unix_timestamp):
-    return datetime.utcfromtimestamp(int(unix_timestamp)).strftime('%Y:%m:%d %H:%M:%S')
-
+# def unix_to_datetime(unix_timestamp):
+#     return datetime.utcfromtimestamp(int(unix_timestamp)).strftime('%Y:%m:%d %H:%M:%S')
+def parse_timestamp(timestamp):
+    try:
+        # Attempt Unix timestamp conversion
+        return datetime.utcfromtimestamp(int(timestamp)).strftime('%Y:%m:%d %H:%M:%S')
+    except ValueError:
+        try:
+            # Attempt direct parsing if already formatted
+            return datetime.strptime(timestamp, '%Y:%m:%d %H:%M:%S').strftime('%Y:%m:%d %H:%M:%S')
+        except ValueError:
+            return None
 
 def update_metadata_from_csv(csv_file, base_directory, mode):
     missing_files_log = f"missing_files_{mode}.log"
     with open(csv_file, 'r') as file, open(missing_files_log, 'w') as log:
         reader = csv.DictReader(file)
         for row in reader:
-            uri = row.get('uri')
+            uri = row.get('uri') or row.get('src')
             unix_timestamp = row.get('creation_timestamp')
             latitude = row.get('latitude', None)
             longitude = row.get('longitude', None)
@@ -27,7 +36,8 @@ def update_metadata_from_csv(csv_file, base_directory, mode):
                 continue
 
             try:
-                creation_datetime = unix_to_datetime(unix_timestamp) if unix_timestamp else None
+                # creation_datetime = unix_to_datetime(unix_timestamp) if unix_timestamp else None
+                creation_datetime = parse_timestamp(unix_timestamp) if unix_timestamp else None
             except ValueError:
                 log.write(f"{full_path}: Invalid timestamp - {unix_timestamp}\n")
                 print(f"Invalid timestamp for {full_path}: {unix_timestamp}")

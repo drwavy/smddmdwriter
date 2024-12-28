@@ -29,11 +29,11 @@ def process_files_in_csv():
     df = pd.read_csv(output_csv)
 
     for index, row in df.iterrows():
-        uri = row.get("uri", "")
-        if not uri:
+        uri = row.get("uri", "") or row.get("src", "")
+        if not isinstance(uri, str) or not uri.strip():
             continue
 
-        full_path = os.path.join(base_directory, uri)
+        full_path = os.path.join(base_directory, uri.strip())
 
         if "/audio/" in uri:
             if not os.path.splitext(uri)[1]:
