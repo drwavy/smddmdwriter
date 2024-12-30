@@ -29,7 +29,7 @@ def process_files_in_csv():
     df = pd.read_csv(output_csv)
 
     for index, row in df.iterrows():
-        uri = row.get("uri", "") or row.get("src", "")
+        uri = row.get("uri", "")
         if not isinstance(uri, str) or not uri.strip():
             continue
 

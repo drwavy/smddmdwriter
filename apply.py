@@ -3,16 +3,11 @@ import os
 import subprocess
 from datetime import datetime
 
-
-# def unix_to_datetime(unix_timestamp):
-#     return datetime.utcfromtimestamp(int(unix_timestamp)).strftime('%Y:%m:%d %H:%M:%S')
 def parse_timestamp(timestamp):
     try:
-        # Attempt Unix timestamp conversion
         return datetime.utcfromtimestamp(int(timestamp)).strftime('%Y:%m:%d %H:%M:%S')
     except ValueError:
         try:
-            # Attempt direct parsing if already formatted
             return datetime.strptime(timestamp, '%Y:%m:%d %H:%M:%S').strftime('%Y:%m:%d %H:%M:%S')
         except ValueError:
             return None
@@ -36,7 +31,6 @@ def update_metadata_from_csv(csv_file, base_directory, mode):
                 continue
 
             try:
-                # creation_datetime = unix_to_datetime(unix_timestamp) if unix_timestamp else None
                 creation_datetime = parse_timestamp(unix_timestamp) if unix_timestamp else None
             except ValueError:
                 log.write(f"{full_path}: Invalid timestamp - {unix_timestamp}\n")

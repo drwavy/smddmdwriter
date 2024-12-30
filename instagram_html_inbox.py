@@ -17,7 +17,7 @@ os.makedirs(os.path.dirname(output_csv), exist_ok=True)
 
 with open(output_csv, "w", newline="", encoding="utf-8") as csvfile:
     writer = csv.writer(csvfile)
-    writer.writerow(["src", "sender_name", "creation_timestamp"])
+    writer.writerow(["uri", "sender_name", "creation_timestamp"])
 
     for root, dirs, files in os.walk(inbox_directory):
         for file in files:
