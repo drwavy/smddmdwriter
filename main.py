@@ -36,9 +36,10 @@ def main():
     print("Select an option:")
     print("1. Instagram HTML")
     print("2. Instagram JSON")
-    print("3. Snapchat Data")
+    print("3. Snapchat MyData")
+    print("4. Google Takeout")
 
-    choice = input("Enter 1, 2, or 3: ").strip()
+    choice = input("Enter 1, 2, 3, or 4: ").strip()
     if choice == "1":
         run_script("instagram_html_inbox.py")
         run_script("instagram_html_content.py")
@@ -48,11 +49,14 @@ def main():
         run_script("instagram_json_timestamp.py")
     elif choice == "3":
         run_script("snapchat.py")
+    elif choice == "4":
+        run_script("googletakeout.py")
     else:
         print("Invalid choice. Exiting.")
         return
 
-    print("The CSV files have been generated. (Does not apply to Snapchat data, ignore all errors atp.")
+    print("The CSV files have been generated")
+    print("If your smddmd is a Snapchat MyData or Google Takeout: Errors after this point DO NOT APPLY")
     edit_choice = input("Press ENTER to continue or type 'edit' to open the folder: ").strip()
     if edit_choice.lower() == "edit":
         csv_folder = 'csv'
